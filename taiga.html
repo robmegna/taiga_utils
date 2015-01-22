@@ -1,0 +1,284 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Taiga Admin</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <style type="text/css">
+        @media print {
+            #interface {
+                display: none;
+            }
+
+            .pb {
+                page-break-after: always;
+                clear: both;
+            }
+        }
+
+        #tasks {
+            clear: both;
+        }
+
+        .story {
+            background-color: #fff;
+            border: 2px solid #000;
+            float: left;
+            height: 3.2in;
+            margin: 0.1in 0.1in 0.1in 0.1in;
+            position: relative;
+            overflow: hidden;
+            width: 4.3in;
+        }
+
+        .story .header {
+            border: 1px;
+            border-bottom-style: solid;
+            display: table-cell;
+            height: 40px;
+            vertical-align: middle;
+            width: 4.3in;
+            font: 14pt / 1.26 Arial, Helvetica, sans-serif;
+            padding-left: 0.25em;
+            padding-top: 0.3em;
+        }
+
+        .story .body {
+            font: bold 28px Genova, sans-serif;
+            padding-top: 0.5em;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .story .estimate {
+            bottom: 0.5em;
+            position: absolute;
+            right: 0.5em;
+        }
+
+        .task {
+            background-color: #fff;
+            border: 2px solid #000;
+            float: left;
+            height: 2in;
+            margin: 0.05in 0.05in 0.05in 0.05in;
+            position: relative;
+            overflow: hidden;
+            width: 2.2in;
+        }
+
+        .task .header {
+            border: 1px;
+            border-bottom-style: solid;
+            display: table-cell;
+            height: 20px;
+            vertical-align: middle;
+            width: 2.2in;
+            font: 8pt / 0.50 Arial, Helvetica, sans-serif;
+        }
+
+        .task .body {
+            font: bold 12px Genova, sans-serif;
+            padding-top: 0.5em;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .task .storyid {
+            bottom: 0.5em;
+            position: absolute;
+            right: 0.5em;
+        }
+    </style>
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+        <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <form class="navbar-form navbar-left" role="search">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="Username" aria-describedby="sizing-addon2" id="username">
+                    <input type="password" class="form-control" placeholder="Password" aria-describedby="sizing-addon2" id="password">
+                </div>
+                <button id="btnLoginSubmit" class="btn btn-default">Submit</button>
+            </form>
+                <ul class="nav navbar-nav">
+                    <li class="dropdown">
+                      <div class="dropdown">
+                          <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-expanded="true">
+                            Projects
+                            <span class="caret"></span>
+                          </button>
+                          <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" id="projects">
+                          </ul>
+                      </div>
+                    </li>
+                    <li>
+                        <div class="dropdown">
+                            <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-expanded="true">
+                                Sprints
+                                <span class="caret"></span>
+                            </button>
+                          <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" id="sprints">
+                          </ul>
+                        </div>
+                    </li>
+                </ul>
+            </div><!-- /.navbar-collapse -->
+        </div><!-- /.container-fluid -->
+</nav>
+<div id="stories"></div>
+<div class="pb"></div>
+<div id="tasks"></div>
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+    <script>
+        var xauth, 
+        projects,
+        stories,
+        currentProjectId,
+        currentMilestoneId;
+
+        $('#btnLoginSubmit').click(function () {
+            var username = $('#username').val();
+            var password = $('#password').val();
+
+            $.ajax({
+                url: "http://10.25.99.72/api/v1/auth",
+                type: "POST",
+                data: { "type": "normal", "username": username, "password": password}
+            }).then(function(response) {
+                xauth = response.auth_token;
+                loadProjects();
+            });            
+            return false;
+        });
+
+
+        function loadProjects() {
+            $.ajax({
+                    url: "http://10.25.99.72/api/v1/projects",
+                    type: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": 'Bearer ' + xauth
+                    }
+                }).then(function(response) {
+                    projects = response;
+                    projects.forEach(function(project){
+                        $('#projects').append('<li role="presentation"><a role="menuitem" tabindex="-1" href="#" id="'+project.id+'">'+project.name+'</a></li>');
+                    });
+
+                    $('#projects li > a').click(function(e){
+                        loadSprints(this.id);
+                        $('#dropdownMenu1').text(this.innerText);
+                    });
+                });
+        }
+
+        function loadSprints(projectId) {
+            currentProjectId = projectId;
+            $.ajax({
+                    url: "http://10.25.99.72/api/v1/milestones?project=" + projectId,
+                    type: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": 'Bearer ' + xauth
+                    }
+                }).then(function(response) {
+                    sprints = response;
+                    sprints.forEach(function(sprint){
+                        $('#sprints').append('<li role="presentation"><a role="menuitem" tabindex="-1" href="#" id="'+sprint.id+'">'+sprint.name+'</a></li>');
+                    });
+
+                    $('#sprints li > a').click(function(e){
+                        loadStories(this.id);
+                        $('#dropdownMenu2').text(this.innerText);
+                    });
+                });
+        }
+
+        function loadStories(milestoneId) {
+            currentMilestoneId = milestoneId;
+            $.ajax({
+                    url: "http://10.25.99.72/api/v1/userstories?milestone=" + milestoneId,
+                    type: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": 'Bearer ' + xauth
+                    }
+                }).then(function(response) {
+                    stories = response;
+                    
+                    stories.forEach(function(story, index){
+                        var content = '';
+
+                        if (index % 2 === 0 && index > 0) {
+                            console.log('cards', index % 2, index);
+                            content+='<div class="pb"></div>';
+                        }
+
+                        var total_points = (story.total_points === null) ? 0 : story.total_points;
+                        content+= '<div class="story">';
+                        content+='<div class="header"> #'+story.ref+'</div>';
+                        content+='<div class="body">'+story.subject+'</div>';
+                        content+='<div class="estimate">'+total_points+'</div></div>';
+
+                        $('#stories').append(content);
+                    });
+                    loadStoryTasks();
+                });
+        }
+
+        function loadStoryTasks () {
+            var taskIndex = 0;
+
+            stories.forEach(function (story, index) {
+
+               $.ajax({
+                    url: "http://10.25.99.72/api/v1/tasks?project="+currentProjectId+"&user_story="+story.id+"&milestone=" + currentMilestoneId,
+                    type: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": 'Bearer ' + xauth
+                    }
+                }).then(function(response) {
+                    var tasks = response;
+                    
+                    tasks.forEach(function(task){
+                        var content = '';
+                        if (taskIndex % 12 === 0 && taskIndex > 0) {
+                            content+='<div class="pb"></div>';
+                        }
+                        taskIndex++;
+
+                        content+= '<div class="task">';
+                        content+='<div class="header">Task #'+task.id+'</div>';
+                        content+='<div class="storyid">Story #'+task.user_story+'</div>';
+                        content+='<div class="body">'+task.subject+'</div></div>';
+                        $('#tasks').append(content);
+                    });
+
+                }); 
+            });                
+        }
+
+    </script>
+ </body>
+</html>
